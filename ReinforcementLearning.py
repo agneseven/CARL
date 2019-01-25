@@ -683,8 +683,8 @@ class ReinforcementLearning:
                 reward_list.append(r_sum)
                 averageReward = np.mean(reward_list[-100:])
                 # print(type(reward_list), type(100), type(best_score), type(averageReward))
-                # if(len(reward_list) >= 100 and best_score is 0 or best_score < averageReward):
-                #     best_score = averageReward
+                if(len(reward_list) >= 100 and best_score is None or best_score < averageReward):
+                    best_score = averageReward
             elif(i==0): #first epoch
                 r_avg_list.append(r_sum)
                 reward_list.append(r_sum)
