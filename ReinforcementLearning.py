@@ -33,7 +33,7 @@ class ReinforcementLearning:
             Args:
                 nNode = number of nodes in the topology
                 nFlow = number of flows that we want to train
-
+                double_dqn = flag -> 1: active double; 0: not using double
             """
         self.nNode = None
         self.nFlow = nFlow
@@ -375,12 +375,13 @@ class ReinforcementLearning:
 
         epsilon_linear_step = (epsilon_start-min_epsilon)/epochs
         
-        activeFlows = 1
-        increment = 0
+        # activeFlows = 1
+        increment = epochs/self.nFlow
 
         for i in range(epochs):
             if (i == (epochs/self.nFlow + increment)):
-                activeFlows = activeFlows + 1
+                # activeFlows will not change at the first episode
+                activeFlows = activeFlows - 1
                 increment = increment + epochs/self.nFlow
                 print('incremento {}'.format(i))
             

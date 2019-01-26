@@ -101,7 +101,7 @@ def main():
     RL1 = None
     if args.routing == 'rl':
 #trainig RL!!
-        activeFlows = 0
+        activeFlows = initialnFlow - 1
         RL1 = ReinforcementLearning(initialnFlow, myG, 0)
         model = RL1.training(parameters, nNode, myG, nHost, activeFlows)
 
