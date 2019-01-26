@@ -1,10 +1,12 @@
 import networkx as nx
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 import numpy as np
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import RMSprop
-#import matplotlib.pyplot as plt
-#import pylab as plt
+import matplotlib.pyplot as plt
+# import pylab as plt
 #from IPython.display import clear_output
 import random
 from keras.callbacks import History
@@ -378,14 +380,21 @@ class ReinforcementLearning:
         # activeFlows = 1
         increment = epochs/self.nFlow
 
+        avg_rew_per_ep = [] #save the avg reward for each episode
+        list_rew_per_ep = [] #save the reward for each action in one episode
+
         for i in range(epochs):
             if (i == (epochs/self.nFlow + increment)):
                 # activeFlows will not change at the first episode
                 activeFlows = activeFlows - 1
                 increment = increment + epochs/self.nFlow
                 print('incremento {}'.format(i))
-            
-            
+
+
+            #save the reward for each action in one episode
+            #initialized at the beginning of each episode
+            list_rew_per_ep[:] = []
+
             state = self.initGridNnodesFflow(activeFlows)
             st = self.findLoc(state, 0)
             en = self.findLoc(state, self.nFlow)
@@ -555,6 +564,8 @@ class ReinforcementLearning:
                 updates.append(reward)
                 #evaluation of the total reward: sum of the reward obtained by each action
                 r_sum += reward
+                list_rew_per_ep.append(reward)
+
 
                 if(reward == 1):
                     success[st[0]][en[0]] += 1
@@ -683,6 +694,8 @@ class ReinforcementLearning:
                 r_avg_list.append(r_sum+r_avg_list[i-1])
                 reward_list.append(r_sum)
                 averageReward = np.mean(reward_list[-100:])
+                if(len(list_rew_per_ep) != 0):
+                    avg_rew_per_ep.append(sum(list_rew_per_ep)/len(list_rew_per_ep))
                 # print(type(reward_list), type(100), type(best_score), type(averageReward))
                 if(len(reward_list) >= 100 and best_score is None or best_score < averageReward):
                     best_score = averageReward
@@ -703,9 +716,17 @@ class ReinforcementLearning:
 #        plt.xlabel('Epoch')
 #        plt.ylabel('Loss')
 #        plt.show();
-##        print(r_avg_list)
-#        plt.plot(r_avg_list)
-#        plt.show()
+#        print(r_avg_list)
+        plt.plot(avg_rew_per_ep)
+        plt.show()
+
+        plt.plot(r_avg_list)
+        plt.draw()
+
+        plt.show()
+
+        plt.plot(reward_list)
+        plt.show()
 
 #        print(NodePairs)
 #        print(visit)
@@ -717,9 +738,9 @@ class ReinforcementLearning:
 #        plt.plot(loss)
 #        plt.show()
 ################cumulative reward
-#        plt.plot(cumrew)
-#        plt.show()
-##        print('success: {}'.format(success))
+        plt.plot(cumrew)
+        plt.show()
+#        print('success: {}'.format(success))
 ####################epsilon##################
 ##        plt.plot(arrayepsilon)
 ##        plt.show()
