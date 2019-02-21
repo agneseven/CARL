@@ -23,16 +23,16 @@ class topoGeneration:
             G[e[0]][e[1]]['weight'] = self.bandwidth_list[e]
         return G
 
-#    def showGraph(self):
-#    # show graph in a Figure
-#        G = self.Graph()
-#        pos = nx.spring_layout(G)
-#        nx.draw_networkx_nodes(G,pos)
-#        nx.draw_networkx_edges(G,pos)
-#        nx.draw_networkx_labels(G,pos)
-#        labels = nx.get_edge_attributes(G,'weight')
-#        nx.draw_networkx_edge_labels(G,pos,edge_labels=labels)
-#        plt.show()
+    def showGraph(self):
+   # show graph in a Figure
+        G = self.Graph()
+        pos = nx.spring_layout(G)
+        nx.draw_networkx_nodes(G,pos)
+        nx.draw_networkx_edges(G,pos)
+        nx.draw_networkx_labels(G,pos)
+        labels = nx.get_edge_attributes(G,'weight')
+        nx.draw_networkx_edge_labels(G,pos,edge_labels=labels)
+        plt.show()
 
     def adjMatrix(self):
         adjMatrix = nx.adjacency_matrix(G)

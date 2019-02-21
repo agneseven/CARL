@@ -6,7 +6,7 @@ from topoGeneration import topoGeneration
 from packetsGeneration import *
 from GraphManager import *
 from EventManager import *
-from ReinforcementLearning import *
+from ReinforcementLearning_v2 import *
 #from sigopt import Connection
 #from briteGen import *
 import os.path
@@ -96,14 +96,16 @@ def main():
                 num_h += 1
                 index += 1
     myG=nx.relabel_nodes(G,mapping)
+ 
 
     model = None
     RL1 = None
     if args.routing == 'rl':
 #trainig RL!!
         activeFlows = initialnFlow - 1
-        RL1 = ReinforcementLearning(initialnFlow, myG, 0)
-        model = RL1.training(parameters, nNode, myG, nHost, activeFlows)
+        RL1 = ReinforcementLearning(initialnFlow, myG, nNode, nHost,parameters, activeFlows, 0)
+        model = RL1.training()
+
 
 
 

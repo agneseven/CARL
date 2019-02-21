@@ -6,6 +6,7 @@ from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import RMSprop
 import matplotlib.pyplot as plt
+from random import randint
 # import pylab as plt
 #from IPython.display import clear_output
 import random
@@ -275,67 +276,17 @@ class ReinforcementLearning:
                 batchSize =
                 buffer =
             Returns:
-            model = trained neural network
+            model = trained neural network (NN)
             """
     #generation of the topology
         
         
-#        self.nNode, points_list, bandwidth_list, delay_list = briteGen()
         self.nNode = nNode
         self.nHost = nHost
         G = myG
-#        topoGen = topoGeneration(nNode, points_list, bandwidth_list, delay_list)
-#        G = topoGen.Graph()
 
-        state = self.initGridNnodesFflow(activeFlows)
-        NodePairs = np.zeros((nNode, nNode))
-#        print('stato iniziale {}', state)
-
-
-
-
+        # The batch size limits the number of samples to be shown to the network before a weight update can be performed. This same limitation is then imposed when making predictions with the fit model. Specifically, the batch size used when fitting your model controls how many predictions you must make at a time.
         Sbatch_size = 32
-
-        print('nnode dense', (self.nNode*(self.nFlow+1)+self.nNode)/2)
-
-
-        model = Sequential()
-#        model.add(Dense((2*self.nNode*(self.nFlow+1)/3), input_dim=self.nNode*(self.nFlow+1), kernel_initializer ='he_normal', activation='relu'))#164
-        model.add(Dense(((self.nNode*(self.nFlow+1)+self.nNode)/2), input_dim=self.nNode*(self.nFlow+1), kernel_initializer ='he_normal', activation='relu'))#164
-
-#        model.add(Dense(24, kernel_initializer ='he_normal', activation='relu'))#150
-#        model.add(Dense(150, kernel_initializer ='he_normal', activation='relu'))
-#        model.add(Dense(150, kernel_initializer ='he_normal', activation='relu'))
-        model.add(Dense(self.nNode, kernel_initializer ='he_normal', activation='linear'))
-
-#        model.add(Dense(164, init='he_normal', input_shape=(self.nNode*(self.nFlow+1),)))#(9x1x4) #Initializations define the way to set the initial random weights of Keras layers ##lecun_uniform
-#        model.add(Activation('relu'))
-##        model.add(Activation(LeakyReLU(alpha=0.1)))
-#        #model.add(Dropout(0.2)) # I don't know 100% for sure that it's bad to use dropout in Deep Reinforcement Learning, but 1) it's certainly not common, and 2) intuitively it doesn't seem necessary. Dropout is used to combat overfitting in supervised learning, but overfitting is not really much of a risk in Reinforcement Learning (at least, not if you're just trying to train for a single game at a time like you are here).
-#
-#        model.add(Dense(150, init='he_normal'))
-#        model.add(Activation('relu'))#        model.add(Activation(LeakyReLU(alpha=0.1)))
-#        #model.add(Dropout(0.2))
-#        model.add(Dense(150, init='he_normal'))
-#        model.add(Activation('relu'))#        model.add(Activation(LeakyReLU(alpha=0.1)))
-#        #model.add(Dropout(0.2))
-#        model.add(Dense(150, init='he_normal'))
-#        model.add(Activation('relu'))#        model.add(Activation(LeakyReLU(alpha=0.1)))
-#        #model.add(Dropout(0.2))
-#
-#
-#        model.add(Dense(self.nNode, init='self.nNode'))
-#        model.add(Activation('linear')) #linear output so we can have range of real-valued outputs
-
-        rms = RMSprop()
-        model.compile(loss='mse', optimizer=rms, metrics=['accuracy']) #reset weights of neural network
-
-        
-#        model.fit(state.reshape(1,self.nNode*(self.nFlow+1)), reward_value, epochs=1, verbose=0)
-
-        prediction = model.predict(state.reshape(1,self.nNode*(self.nFlow+1)), batch_size=Sbatch_size)
-#        print(prediction)
-
         epochs = int(parameters[0])
         gamma = float(parameters[1])#since it may take several moves to goal, making gamma high
         NB_epoch = int(parameters[2])
@@ -348,18 +299,45 @@ class ReinforcementLearning:
         alpha =  0.1#learning rate
         batchSize = int(parameters[3])
         buffer = int(parameters[4])
+        #initialize buffer for replay memory
         replay = []
-        h = 0
-        
+        # h = 0
+
         print("Parameters currently in use")
         print('epochs {} gamma {} epsilon {} alpha {} batchSize {} buffer {}'.format(epochs, gamma, epsilon, alpha, batchSize,  buffer))
         
-#        topoGen = topoGeneration(nNode, points_list, bandwidth_list, delay_list)
-#        graph = topoGen.Graph()
-#        topoGen.showGraph()
-        #for counting how many times each node is conidered as starting and ending location during the trainig
-        posIniziale = np.zeros(self.nNode)
-        posFinale = np.zeros(self.nNode)
+
+        state = self.initGridNnodesFflow(activeFlows)
+        NodePairs = np.zeros((nNode, nNode))
+#        print('stato iniziale {}', state)
+
+        # The Sequential class is used to define a linear stack of network layers which then, collectively, constitute a model.
+        model = Sequential() #Sequential constructor to create a model, which will then have layers added to it using the add() method.
+        # first (input) layer of the model
+        #layer of type Dense ("Just your regular densely-connected NN layer").
+        #The Dense layer has output size (self.nNode*(self.nFlow+1)+self.nNode)/2 -> ?
+        #input size = self.nNode*(self.nFlow+1) -> environment state size (row = nodes; column= flows)
+        #activation function = To check the Y values produced by a neuron and decide wheter outside connections should conside this neuron as fired
+        #or not. or ratherlet us say activated or nor (best funzion for hidden layers is ReLu)
+        # kernel_initializer = the way to set the initial random weights of Keras layers
+        model.add(Dense(((self.nNode*(self.nFlow+1)+self.nNode)/2), input_dim=self.nNode*(self.nFlow+1), kernel_initializer ='he_normal', activation='relu'))
+         # only the first layer of the model requires the input dimension to be explicitly stated; the following layers are able to infer from the previous linear stacked layer
+         #next Dense layer
+         #output size = total number of nodes, because we want one of the nodes as next hop
+        model.add(Dense(self.nNode, kernel_initializer ='he_normal', activation='linear'))
+         # RMSprop = optimization algorithm, adaptation of rprop algorithm for mini-batch learning. Simple learning rate schedule is not dynamic enough to handle changes in input during the training. Many RL training uses RMSProp or Adam optimizer.
+        rms = RMSprop(lr=0.001, rho=0.9, epsilon=None, decay=0.0)
+
+        # loss = tf.losses.huber_loss(delta=2.0)
+        #Before training a model, you need to configure the learning process, which is done via the compile method. 
+        #loss = A loss function. This is the objective that the model will try to minimize. 
+        #optimizer = An optimizer.
+        #metrics = A list of metrics. For any classification problem you will want to set this to metrics=['accuracy']. A metric could be the string identifier of an existing metric or a custom metric function.
+        model.compile(loss='logcosh', optimizer=rms, metrics=['accuracy']) #Compile defines the loss function, the optimizer and the metrics. That's all. If you compile a model again, you will lose the optimizer states.
+
+        
+        # prediction = model.predict(state.reshape(1,self.nNode*(self.nFlow+1)), batch_size=Sbatch_size)
+
 
         updates = []
         updates2 = []
@@ -383,7 +361,10 @@ class ReinforcementLearning:
         avg_rew_per_ep = [] #save the avg reward for each episode
         list_rew_per_ep = [] #save the reward for each action in one episode
 
+
+        #start of episodes
         for i in range(epochs):
+            #change the number of flows in the state incrementally
             if (i == (epochs/self.nFlow + increment)):
                 # activeFlows will not change at the first episode
                 activeFlows = activeFlows - 1
@@ -395,42 +376,42 @@ class ReinforcementLearning:
             #initialized at the beginning of each episode
             list_rew_per_ep[:] = []
 
+
+            #INITIALIZE THE STARTING STATE
             state = self.initGridNnodesFflow(activeFlows)
+            
+            #retrieve starting and ending node of the agent
             st = self.findLoc(state, 0)
             en = self.findLoc(state, self.nFlow)
-            NodePairs[st[0]][en[0]] += 1
-#            print('st, en {} {}'.format(st, en))
-
+            # NodePairs[st[0]][en[0]] += 1
             pos_1 = self.findLoc(state, 0)
             goal1 = self.findLoc(state, self.nFlow)
 
-            posIniziale[pos_1[0]] += 1
-            posFinale[goal1[0]] += 1
-
+            #initialize list of other agents' locations and actions
             players_loc = []
             action = []
           
+            #retrieve location and action of other agents
             for n in range(self.nFlow-activeFlows):
                 players_loc.append(self.findLoc(state, n))#format : (current_node, 0)
                 action.append(players_loc[n][0])
-            
-            #epsilon = max(min_epsilon, epsilon*decay)
-#            epsilon = min_epsilon + (1.0 - min_epsilon) * np.exp(-decay * i)
-#epsilon * decay#(1-(epsilon_start + epsilon_end)/epochs)# epsilon * epsilon_decay
-# linearly decay epsilon from epsilon_start to epsilon_end over epsilon_decay_length steps
+            #for the epsilon-greedy algorithm (exploration-exploitation)
+            # linearly decay epsilon from epsilon_start to epsilon_end over epsilon_decay_length steps
             if epsilon > min_epsilon:
                 epsilon -= epsilon_linear_step
-#            print("epsilon")
-#            print(epsilon)
             arrayepsilon.append(epsilon)
             
+
             bufferaction = []
             for b in range(self.nNode):
                 bufferaction.append(0)
+
             finalpath = []
             finalpath.append(pos_1[0])
             cumrew = []
 
+
+            #we need adjMatrix only to know the valide actions. The valide actions are the adjacent nodes of the current node
             adjMatrix = nx.adjacency_matrix(G)
 
 
@@ -439,15 +420,15 @@ class ReinforcementLearning:
             index2 = [0] * self.nFlow
 
 
-            #while game still in progress, when game finishes, the status is set to 0
+            #while game still in progress status = 1, when game ends, the status is set to 0
             #it can finish because flow1 reached the goal or because there were too many moves
+            #for each time step in one episode
             while(status == 1):
-#                print('state',state)
-                goal1 = self.findLoc(state, self.nFlow)
 
                 #find current location of flow 1
-                player_loc = self.findLoc(state, 0)#np.array([1,0,0,0]))
+                player_loc = self.findLoc(state, 0)
 #                print('current flow 1 location: {}'.format(player_loc))
+                
                 # current location of all the flows
                 players_loc[0] = player_loc
                 for f in range(1,self.nFlow-activeFlows):
@@ -455,239 +436,167 @@ class ReinforcementLearning:
 #                print('players_loc {}'.format(players_loc))
 
                 #we need adjMatrix only to know the valide actions. The valide actions are the adjacent nodes of the current node
-
                 nonAdjNodes = []
                 AdjNodes = []
-#                    print('range 1 {}'.fw-activeFlows)))
-#                    print('range 2 {}'.format(range(self.nNodormat(range(self.nFloe)))
                 for f in range(self.nFlow-activeFlows):
                     nonAdjNodesList = []
                     for k in range(self.nNode):
-#                        print('adjMatrix.todense()[players_loc[f][0],k] {}{}'.format(k, adjMatrix.todense()[players_loc[f][0],k]))
                         if (adjMatrix.todense()[players_loc[f][0],k] == 0 and players_loc[f][0] != k):
-                            #if (players_loc[f][0] != k):
                             nonAdjNodesList.append(k)
-#                    nonAdjNodesList = sorted(nonAdjNodesList)
                     nonAdjNodes.append(nonAdjNodesList)
                 nonAdjNodes[0].append(players_loc[0][0])
 
-#                nonAdjNodes = sorted(nonAdjNodes)
-
-#                print('nonAdjNodes %s ' %nonAdjNodes)
-#                nonAdjNodes[0].append(players_loc[0][0])
-#                nonAdjNodes[0][:] = sorted(nonAdjNodes[0][:])
-
-#                print('nonAdjNodes[0]: {}'.format(nonAdjNodes[0][:]) )
-
                 NodeList = range(self.nNode)
-
-                
+   
                 for f in range(self.nFlow-activeFlows):
                     AdjNodes.append(list(set(NodeList).difference(set(nonAdjNodes[f][:]))))
-#                print('AdjNodes %s ' %AdjNodes)
 
 
                 #Let's run our Q function on S to get Q values for all possible actions
+                #I evaluate qval = vestor with a Q value for each node of the topology (each action)
+                #I do it now because then qval (explotation) or a random node (exploration) will be 
+                #use as action
                 qval = model.predict(state.reshape(1,self.nNode*(self.nFlow+1)), batch_size=Sbatch_size)
 
+# Target networks are used in Deep Learning to improve the stability of training. 
+# target network is updated every tau = 1000 steps
+                Qtarget = qval.copy()
                 #epsilon-greedy alghoritm for exploration and exploitation of the flow1:
                 #at the beginning more exploration (epsilon is bigger)
-                #then the epsilon decreases (linearly), therefore there will be more exploitation of the Q function
-#                print('goal {}'.format(goal1[0]))
+                #then the epsilon decreases (linearly), therefore there will be more exploitation (using qval)
+                #EXPLORATION -> random neighbor
                 if (random.random() < epsilon): #choose random action
-#                    print('random action')
+                #random.random() Return the next random floating point number in the range [0.0, 1.0).
+                    print('random action')
                     if(player_loc != goal1):#if the goal has not been reached yet
-                        index = np.random.randint(0,len(AdjNodes[0][:]))
+                        index = np.random.randint(0,len(AdjNodes[0][:]))#pink a random neighbor
                         action[0] = AdjNodes[0][index]
             
                     else:#if the goal has already been reached
-#                        print('else')
                         AdjNodes[0].append(goal1[0])
-#                        AdjNodes[0][:] = sorted(AdjNodes[0][:])
                         nonAdjNodes[0] = np.setdiff1d(nonAdjNodes[0],goal1[0])
-#                        print('AdjNodes, nonAdjNodes {} {}'.format(AdjNodes[0], nonAdjNodes[0] ))
                         action[0] = goal1[0]
-
+                #EXPLOITATION -> max qval
                 else: #choose best action from Q(s,a) values
-#                    print('qval action')
                     if(player_loc != goal1):#if the goal has not been reached yet
                         qvalValid = np.copy(qval)
-
+                        #so the max q value cannot be one associated to a node that is not a neighobor
                         for non in nonAdjNodes[0][:]:
                             qvalValid[0, non] = -100000
-                            action[0] = (np.argmax(qvalValid))
+                        action[0] = (np.argmax(qvalValid))
                     else:#if the goal has already been reached
-#                        print('else')
                         AdjNodes[0].append(goal1[0])
-#                        AdjNodes[0][:] = sorted(AdjNodes[0][:])
                         nonAdjNodes[0] = np.setdiff1d(nonAdjNodes[0],goal1[0])
-#                        print('AdjNodes, nonAdjNodes {} {}'.format(AdjNodes[0], nonAdjNodes[0] ))
                         action[0] = goal1[0]
-#                print('AdjNodes  {}'.format(AdjNodes[0] ))
-#                print('action[0] {}'.format(action[0]))
-
 
 
                 bufferaction[action[0]] += 1
-#                print('index2 {}'.format(index2))
-                #actions of the other flows are simply random actions among the valid actions
-                if(len(finalpath) < 3):
+#!!!!!!!!!!!!!!!!!!!!!?????????????
+                #actions of the other flows are simply random actions among the valid actions (neighbora)
+                if(len(finalpath) < self.nNode-3):
                     for f in range(1,self.nFlow-activeFlows):
                         index2[f] = np.random.randint(0, len(AdjNodes[f][:]))
-#                        print('index2 {}'.format(index2))
-
                         action[f] = AdjNodes[f][index2[f]]
                 action_ = np.copy(action)
-                if(len(finalpath) >= 3):
+                if(len(finalpath) >= self.nNode-3):
                     for f in range(1,self.nFlow-activeFlows):
                         action[f] = action_[f]
-
-#                print('all actions {}'.format(action))
 
 
 
                 visit[player_loc[0], action[0]][0] += 1
-                    #print('visit[player_loc, action[0]][0] {}'.format(visit[player_loc, action[0]][0]))
+
                 alpha =  1./(visit[player_loc[0], action[0]][0])
-#                print('alpha {}'.format(alpha))
-#                print('action: {}'.format(action[0]))
+
                 finalpath.append(action[0])
                 
                 #Take action, observe new state S'
                 new_state = self.makeMove(state, action)
-                
-        
+
+                print('new state {}'.format(new_state))
         
                 #Observed reward
-                reward = self.getReward(new_state, AdjNodes, st, finalpath)
-#                print('rew: {}'.format(reward))
+                reward = self.getReward(new_state, AdjNodes, pos_1, finalpath)
+                print('reward: {}'.format(reward))
                 updates.append(reward)
+
                 #evaluation of the total reward: sum of the reward obtained by each action
                 r_sum += reward
+                #calculate the average reward for each episode
                 list_rew_per_ep.append(reward)
-
 
                 if(reward == 1):
                     success[st[0]][en[0]] += 1
-
 
                 for b in range(self.nNode):
                     if(bufferaction[b] >= 100):
                         reward = -1000
 
-#                print('reward1: %s' %reward)
+                if reward == 1 or reward == -1000:#!= -0.1:# terminal state when I repeated too many times the same move or I arrived to the goal
+                    cumrew.append(reward)
+                    status = 0 #to exit from the episode and start next episode
 
-                #Experience replay storage
-                #Experience Replay stores experiences (state transitions, rewards and actions) which are necessary data to perform Q learning, and makes mini-batches to update neural networks. This technique expects the following merits.
+#REPLAY MEMORY
+#we save in a buffer a certain number of tuple <s,a,r,s'>, state, action, reward, next state (following time step)
+#then we sample a random batch from the buffer
                 #reduces correlation between experiences in updating DNN
                 #increases learning speed with mini-batches
                 #reuses past transitions to avoid catastrophic forgetting
-#                During gameplay all the experiences <s,a,r,s'> are stored in a replay memory. When training the network, random samples from the replay memory are used instead of the most recent transition. This breaks the similarity of subsequent training samples, which otherwise might drive the network into a local minimum. Also experience replay makes the training task more similar to usual supervised learning, which simplifies debugging and testing the algorithm. One could actually collect all those experiences from human gameplay and the train network on these.
+#                During gameplay all the experiences <s,a,r,s'> are stored in a replay memory. When training the network, random samples from the replay memory are used instead of the most recent transition. 
+#This breaks the similarity of subsequent training samples, which otherwise might drive the network into a local minimum. Also experience replay makes the training task more similar to usual supervised learning, 
+#which simplifies debugging and testing the algorithm. One could actually collect all those experiences from human gameplay and the train network on these.
 
-
-                if (len(replay) < buffer): #if buffer not filled, add to it
+                        #classic approach
+#                       1) Select an item from Memory buffer
+#                       2) optimize loss between Q-network and Q-learning target
+                if (len(replay) < buffer): #if buffer not filled, add a new tuple
                     replay.append((state, action[0], reward, new_state))
-                else: #if buffer full, overwrite old values
-                    if (h < (buffer-1)):
-                        h += 1
-                    else:
-                        h = 0
+                else: #if buffer full, perform mini-batch sampling for trainig and overwrite old values
+                    print('replay')#it is full soon because in one episode i can have a lot of states
+
+                    h = randint(0, buffer-1)
+                    #randomly replace a tuple with a new one
                     replay[h] = (state, action[0], reward, new_state)
-                    #randomly sample our experience replay memory
+                    #randomly sample from the experience replay memory
+                    # Return a batchSize length list of unique elements chosen from the population sequence (tuple in replay). 
                     minibatch = random.sample(replay, batchSize)
-                    X_train = []
-                    y_train = []
-                    o = 0
-                    for memory in minibatch:
-                        o = o + 1
-                        #Get max_Q(S',a)
-                        old_state_m, action_m, reward_m, new_state_m = memory
-#                        print('action_m {}'.format(action_m))
-                        old_qval = model.predict(old_state_m.reshape(1,self.nNode*(self.nFlow+1)), batch_size=Sbatch_size)
-#                        newQ = model.predict(new_state_m.reshape(1,self.nNode*(self.nFlow+1)), batch_size=1)
-#                        maxQ = np.max(newQ)
-                        if self.double_dqn:
-#                            The "double DQN approach"":
-#                           1) Select an item from Memory Bank
-#                           2) Using Online Network, from St+1 determine the index of the best action At+1.
-#                           3) Using Target Network, from St+1 get the Q-value of that action.
-#                           4) Do corrections as usual using that Q-value
-                            targetQ = model.predict(new_state_m.reshape(1,self.nNode*(self.nFlow+1)), batch_size=Sbatch_size)
-                            maxindexQ = np.argmax(targetQ)
-#                            print('targetQ: {}, index maxQ: {}'.format(targetQ, maxindexQ))
 
-                            doubleQ = model.predict(old_state_m.reshape(1,self.nNode*(self.nFlow+1)), batch_size=Sbatch_size)
-                            maxQ = doubleQ[0, maxindexQ]
-#                            print('doubleQ: {}, index maxQ: {}'.format(doubleQ, maxQ))
+                    X_batch = []
+                    Y_batch = []
 
-
-                        else:
-                            #classic approach
-#                            1) Select an item from Memory Bank
-#                            2) Using Target Network, from St+1 compute the best action At+1 and its Q-value Q
-#                            3) Do corrections as usual
-                            doubleQ = model.predict(new_state_m.reshape(1,self.nNode*(self.nFlow+1)), batch_size=Sbatch_size)
-                            maxQ = np.max(doubleQ)
-#                            print('doubleQ: {}, maxQ: {}'.format(doubleQ, maxQ))
-
-#                        if (maxQ > 0):
-#                            score.append(np.sum(doubleQ)/1000)
-#                        else:
-#                            score.append(0)
-
-
-                        y = np.zeros((1,self.nNode))
-                        y[:] = old_qval[:]
-#                        print(y)
-#                        print('reward_m, alpha, gamma, maxQ {} {} {} {}'.format(reward_m, alpha, gamma, maxQ))
-
-#                        if reward_m == -0.1: #non-terminal state
+                    for item_b in minibatch:
+                        old_state_m, action_m, reward_m, new_state_m = item_b 
+                     # First, predict the Q values of the next states. 
+                        y_target = model.predict(old_state_m.reshape(1,self.nNode*(self.nFlow+1)), batch_size=Sbatch_size)
                         if reward_m != 1 and reward_m != -1000: #non-terminal state
-                            update = alpha*(reward_m + (gamma * maxQ))
-#                            target = reward(s,a) + gamma * max(Q(s'))
+                            update = reward_m + (gamma * np.max(model.predict(new_state_m.reshape(1,self.nNode*(self.nFlow+1)))))
+                            print('update: {}'.format(update))
                             updates2.append(update)
-        
                         else: #terminal state
                             update = reward_m
                             updates2.append(update)
+                        y_target[0][action_m] = update
+                        X_batch.append(old_state_m.reshape(self.nNode*(self.nFlow+1),))
+                        Y_batch.append(y_target.reshape(self.nNode,))
 
+# optimize loss between Q-network and Q-learning targe
+                    # Fit the keras model.  
 
-
-#                        print('update {}'.format(update))
-#                        y[0][action_m[0]] = update
-                        y[0][action_m] = update
-                        X_train.append(old_state_m.reshape(self.nNode*(self.nFlow+1),))
-                        y_train.append(y.reshape(self.nNode,))
-
-                    X_train = np.array(X_train)
-                    y_train = np.array(y_train)
-                    print("Game #: %s" % (i,))
-                            #model.fit(state.reshape(1,self.nNode*4), y, batch_size=1, nb_epoch=3, verbose=1)
-                    train_history = model.fit(X_train, y_train, batch_size=batchSize, nb_epoch=NB_epoch, validation_data=(X_train, y_train),verbose=1, callbacks=[history])
-
-
-
-
-                    state = new_state
+                        X_train = np.array(X_batch)
+                        Y_train = np.array(Y_batch)
             #batch_size: integer. Number of samples per gradient update.
             #nb_epoch: integer, the number of epochs to train the model.
             #verbose: 0 for no logging to stdout, 1 for progress bar logging, 2 for one log line per epoch.   https://stackoverflow.com/questions/47902295/what-is-the-use-of-verbose-in-keras-while-validating-the-model
-            #state = new_state
-#                    print('new reward: %s' %reward)
-#                    print('new action: %s' action)
+                        train_history = model.fit(X_train, Y_train, batch_size=batchSize, nb_epoch=NB_epoch, validation_data=None,verbose=1, callbacks=[history])
 
-        #        scores.append(update)
-        
-                if reward == 1 or reward == -1000:#!= -0.1:# terminal state when I repeated too many times the same move or I arrived to the goal
-#                    print('finalpath2 {}'.format(finalpath))
-                    cumrew.append(reward)
-                    status = 0
-#                clear_output(wait=True)
-#                print('r sum: { }', r_sum)
 
+                    print("Game #: %s" % (i,))
+                    
+
+        # to reduce epsilon for exploitation-exploration
             if epsilon > 0.1:
                 epsilon -= (1/epochs)
-#            print(i)
+
             if(i>0): #other epochs
 #                print(r_avg_list)
 #cumulative reward evaluated at the end of each episode
@@ -705,17 +614,6 @@ class ReinforcementLearning:
 
 
 
-#        loss = history.history['loss']
-#        val_loss = history.history['val_loss']
-#        acc = history.history['acc']
-#        epoch_count = range(1, len(loss) + 1)
-## Visualize loss history
-#        plt.plot(epoch_count, loss, 'r--')
-#        plt.plot(epoch_count, val_loss, 'b-')
-#        plt.legend(['Training Loss', 'Test Loss'])
-#        plt.xlabel('Epoch')
-#        plt.ylabel('Loss')
-#        plt.show();
 #        print(r_avg_list)
         plt.plot(avg_rew_per_ep)
         plt.show()
@@ -728,33 +626,25 @@ class ReinforcementLearning:
         plt.plot(reward_list)
         plt.show()
 
-#        print(NodePairs)
-#        print(visit)
-#        print('posIniziale {}'.format(posIniziale))
-#        print('posFinale {}'.format(posFinale))
-#plot rewards
-#plt.plot(scores)
-#plt.show()
-#        plt.plot(loss)
-#        plt.show()
-################cumulative reward
         plt.plot(cumrew)
         plt.show()
-#        print('success: {}'.format(success))
-####################epsilon##################
-##        plt.plot(arrayepsilon)
-##        plt.show()
-#        plt.plot(score)
-#        plt.show()
-#        plt.plot(loss)
-#        plt.plot(val_loss)
-#        plt.plot(acc)
-#        plt.legend(['loss', 'val_loss', 'acc'])
-#        plt.show()
-        #plotter.block()
-#        return best_score
+
         return model
-            #, points_list, bandwidth_list, delay_list
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     def testAlgo( self, init, path, G, model, start, end):
@@ -798,7 +688,7 @@ class ReinforcementLearning:
 
 
         adjMatrix = nx.adjacency_matrix(G)
-        st = self.findLoc(state, 0)
+        # st = self.findLoc(state, 0)
 
 
         locflow1 = self.findLoc(state, 0)
