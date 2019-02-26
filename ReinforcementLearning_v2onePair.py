@@ -53,7 +53,9 @@ class ReinforcementLearning:
         state = np.zeros((self.nNode,1,self.nFlow + 1))
         #randomly place new flow: 1 only if the node is a host
         a,b = self.randPair(0, self.nHost)
-        state[a,b,0] = 1
+        # state[a,b,0] = 1
+        state[0,0,0] = 1
+
         #randomly place other flows (strating from one node till the maximum number of flow)
         for n in range (1,self.nFlow-self.activeFlows):
             a1,b1 = self.randPair(0,self.nNode)
@@ -61,7 +63,8 @@ class ReinforcementLearning:
 
         #randomly place goal of the new flow: 1 only if the node is a host
         a_g,b_g = self.randPair(0,self.nHost)
-        state[a_g,b_g,self.nFlow] = 1
+        # state[a_g,b_g,self.nFlow] = 1
+        state[2,0,self.nFlow] = 1
 
         print("starting location")
         print(state)
@@ -264,7 +267,7 @@ class ReinforcementLearning:
         self.bufferSize = int(self.parameters[4])
         #batch of the replay buffer
         self.bufferBatch = int(self.parameters[3])
-        self.stepUpdateTargetNetwork = 10000
+        self.stepUpdateTargetNetwork = 50
 
 
 #create DQN
@@ -437,7 +440,6 @@ class ReinforcementLearning:
                 # activeFlows will not change at the first episode
                 self.activeFlows = self.activeFlows - 1
                 increment = increment + self.episodes/self.nFlow
-                self.epsilon = 1
                 # print('incremento {}'.format(i))
 
             print("Game n: %s" % (ep,))
@@ -568,12 +570,9 @@ class ReinforcementLearning:
 
 
         # to reduce epsilon for exploitation-exploration
-            # if self.epsilon > 0.1:
-            #     print("1/self.episodes", float(1/self.episodes))
-            #     self.epsilon -= 1/float(self.episodes)
             if self.epsilon > 0.1:
                 print("1/self.episodes", float(1/self.episodes))
-                self.epsilon -= 1/float(self.episodes/self.nFlow)
+                self.epsilon -= 1/float(self.episodes)
             arrayepsilon.append(self.epsilon)
 
             print(target_model.summary())
