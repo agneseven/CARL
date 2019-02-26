@@ -80,6 +80,7 @@ class ReinforcementLearning:
         #we need adjMatrix only to know the valide actions. The valide actions are the adjacent nodes of the current node
         nonAdjNodes = [] 
         AdjNodes = []
+        print('vv', (self.nFlow-self.activeFlows))
         print('vv', (players_loc[0][0],1))
         if(self.nFlow-self.activeFlows > 1):
             print('vv', (players_loc[0][1],1))
@@ -166,7 +167,7 @@ class ReinforcementLearning:
         otherAdjNodes = np.setdiff1d(AdjNodes[0],flow1[0])
 
 ##I want the reward included in [-1, 1]
-        penalty = 1/self.nFlow
+        # penalty = 1/self.nFlow
 #1) goal not yet achieved, the node has already been visited
 # a higher penalty to avoid loops
 #        visited = 0
@@ -176,32 +177,40 @@ class ReinforcementLearning:
 #
 #        if(flow1 != goal1 and visited == 1): #sono gia passata per quel nodo
 #            return -0.1
+        print("self.nFlow", self.nFlow)
+        print("self.activeFlows", self.activeFlows)
+        print("self.nFlow-self.activeFlows", self.nFlow-self.activeFlows)
+        penalty = 1/float((self.nFlow-self.activeFlows)*self.nFlow)
 
 #2) goal not yet achieved, only flow in that node
 # a small penalty only to avoid too many movements
         if (flow1 != goal1 and sumRow == 1): #
-            return -0.04
+            return -penalty
 #            return penalty
+
 
 #3) goal not yet achieved, more flows in that node,  not the only possible destination, other possible destinations are emptier
 # a penalty proportional to the number of flows in the node
         for v in otherAdjNodes:
 #            print(v)
-            if(flow1 != goal1 and sumRow != 1 and len(AdjNodes[0]) != 1 and (sumRowVicini[v]+1) < sumRow): #if other neighbors have a lower number of flow exit
+            if(flow1 != goal1 and sumRow != 1 and len(AdjNodes[0]) != 1): #if other neighbors have a lower number of flow exit
+            # if(flow1 != goal1 and sumRow != 1 and len(AdjNodes[0]) != 1 and (sumRowVicini[v]+1) < sumRow): #if other neighbors have a lower number of flow exit
 #                print('qui {} {}'.format(sumRowVicini[v], sumRow))
                 vectorvicini = 1
 
         if(vectorvicini == 1):
-#            print('sum row', sumRow)
-            return -0.25 * (sumRow)
+            print('penalty * sumRow', -penalty * sumRow)
+            return -(penalty * sumRow)
+            # return -0.25 * (sumRow)
+
 #            return penalty * sumRow
 
 #4) goal not yet achieved, more flows in that node, that node is the only possible destinatioN
 # a small penalty only to avoid too many movements, like (2)
 
         if(flow1 != goal1 and sumRow != 1 and len(AdjNodes[0]) == 1):
-#            print('len 1')
-            return -0.04
+            print('lpenalty', -penalty)
+            return -penalty
 #            return penalty
 
 #        elif(flow1 != goal1 and flow1 == start):
@@ -294,14 +303,6 @@ class ReinforcementLearning:
         # prediction = model.predict(state.reshape(1,self.nNode*(self.nFlow+1)), batch_size=Sbatch_size)
         return model
 
-#update target network
-# This function helps us to copy one set of variables to another
-# In our case we use it when we want to copy the parameters of DQN to Target_network
-    def updateDQNTarget(self):
-        # Get the parameters of our online model
-        # Update our target_model parameters with online model parameters
-        self.target_model.set_weights(self.online_model.get_weights())
-
 
     def findLoc(self, state, posZ):
         """
@@ -361,7 +362,7 @@ class ReinforcementLearning:
 
     def getActionOtherAgents(self, finalpath, players_loc):
         action = [0] * (self.nFlow-self.activeFlows-1) 
-        index2 = [0] * self.nFlow
+        index2 = [0] * (self.nFlow+1)
         AdjNodes, nonAdjNodes = self.possibleActions(players_loc)
         print("otherag", AdjNodes)
         print("otherag", AdjNodes[0])
@@ -377,7 +378,11 @@ class ReinforcementLearning:
         if(len(finalpath) >= self.nNode-3):
             for f in range(1,self.nFlow-self.activeFlows):
                 action[f-1] = action_[f-1]
-        return action        
+        return action  
+
+#update target network
+# This function helps us to copy one set of variables to another
+# In our case we use it when we want to copy the parameters of DQN to Target_network
 
     def updateTargetNetwork(self, model, targetModel):
         weights = model.get_weights()
@@ -391,21 +396,28 @@ class ReinforcementLearning:
         self.setHyperpar()
         history = History()
 
+
         #varibales
-        increment = self.episodes/self.nFlow
+        increment = 0
         replay = [] #initialize buffer for replay memory
         arrayepsilon = []
         rewardsarray = []
         reward_sum = 0
         totalStepCounter = 0 #for updating target NN
+        avg_rew_per_ep = []
+        rewardsumarray = []
+        arrayAvgRewperEp = []
 
         adjMatrixX = nx.adjacency_matrix(self.myG)
         print("adj", adjMatrixX.todense())
         #create target NN
         target_model = self.createDQNNet()
+        print(target_model.summary())
+        print("pesi target", target_model.get_weights())
 
         #create online NN
         online_model = self.createDQNNet()
+        print("pesi online", online_model.get_weights())
 
         #start training over episodes: one episode is one entire game
         for ep in range(self.episodes):
@@ -417,6 +429,7 @@ class ReinforcementLearning:
             status = 1    
             players_loc = []   
             numberSteps = 0
+            AvgRewperEp = []
      
 
             #change the number of flows in the state incrementally
@@ -470,6 +483,14 @@ class ReinforcementLearning:
     #Reward from that action
                 reward = self.getReward(new_state, myagentloc, finalpath, players_loc)
                 print("reward", reward)
+
+                rewardsarray.append(reward)
+                reward_sum += reward
+                rewardsumarray.append(reward_sum)
+                if(len(rewardsarray) != 0):
+                    avg_rew_per_ep.append(sum(rewardsarray)/len(rewardsarray))
+                AvgRewperEp.append(reward)
+               
                 if (reward == 1):
                     status = 0
                     print("finalpath", finalpath)
@@ -551,12 +572,32 @@ class ReinforcementLearning:
                 self.epsilon -= 1/float(self.episodes)
             arrayepsilon.append(self.epsilon)
 
-            rewardsarray.append(reward)
-            reward_sum += reward
+            print(target_model.summary())
+            print(online_model.summary())
+            print("pesi online", online_model.get_weights())
+            print("pesi target", target_model.get_weights())
+            arrayAvgRewperEp.append(sum(AvgRewperEp)/len(AvgRewperEp))
 
-        print("reward_sum", reward_sum)
-        print("epsilon", self.epsilon)
 
+        # print("reward_sum", avg_rew_per_ep)
+        # print("reward_sum", rewardsumarray)
+        # print("reward_sum", reward_sum)
+        # print("epsilon", self.epsilon)
+        # print("rewardsarray", rewardsarray)
+
+
+        # plot metrics
+        plt.plot(arrayAvgRewperEp)
+        plt.show()
+        plt.plot(avg_rew_per_ep)
+        plt.show()
+        plt.plot(rewardsumarray)
+        plt.show()
+
+        plt.plot(rewardsarray)
+        plt.show()
+        plt.plot(arrayepsilon)
+        plt.show()
 
         return target_model
 
@@ -612,13 +653,20 @@ class ReinforcementLearning:
         actions = [] #next action of all the flows
         actions.append(0)
 
+        self.activeFlows = 0
+        players_locFlow = []
+        players_locFlow.append(self.getallLocations(state))
+        print("players_locFlow", players_locFlow)
+
+        self.activeFlows = players_locFlow[0].count(None)
+        print(" self.activeFlows",  self.activeFlows)
 
         while(status == 1):
             players_loc = []
             myagentloc = self.findLoc(state, 0)
             players_loc.append(self.getallLocations(state))
             print("players_loc", players_loc)
-            self.activeFlows = players_loc.count(None)
+
 
             actions[0] = self.getQvalAction(state, model, players_loc) 
             finalpath.append(actions[0])
@@ -633,10 +681,12 @@ class ReinforcementLearning:
             numberSteps += 1 #If we're taking more than 30 actions, just stop, we probably can't win this game
             if (numberSteps > 30):
                 loop = 1
+                print("loop out")
                 break
 
 
         if reward == -1000:
+            print("fail")
             fail = 1
 
         return finalpath, win, loop, fail
