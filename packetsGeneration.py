@@ -28,7 +28,7 @@ class packetsGeneration:
     
 
 #
-    def generation(self, GM, nNode, nHost, nSwitch, graph, model, parameters, RL1, dotFormat):
+    def generation(self, GM, nNode, nHost, nSwitch, graph, parameters, RL1, dotFormat):
         """
             function to generate flows from a random source to a random destination. The traffic generation model is a Poission process (we fix lambda = arrival rate)
             Args:
@@ -148,9 +148,9 @@ class packetsGeneration:
                             new_allpathsRL2.append(DummyPath)
 
 #                    print('....allpathsRL2', allpathsRL2)
-                    path, win, loop, fail = RL1.testAlgo(8, new_allpathsRL2, graph, model, sourceID, destinationID)
+                    path, win, loop, fail = RL1.testAlgo(8, new_allpathsRL2, graph, sourceID, destinationID)
                     if(loop == 1):
-                        path, win, loop, fail = RL1.testAlgo(8, new_allpathsRL2, graph, model, destinationID, sourceID)
+                        path, win, loop, fail = RL1.testAlgo(8, new_allpathsRL2, graph, destinationID, sourceID)
                         path = list(reversed(path))
                         print("path not found with RL 1")
 
